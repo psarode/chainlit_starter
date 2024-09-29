@@ -60,27 +60,42 @@ async def on_message(message: cl.Message):
     message_history.append({"role": "user", "content": message.content})
     
     response_message = await generate_response(client, message_history, gen_kwargs)
-    #print(response_message.content)
-    #json_data_with_params = '{"function": "get_now_playing_movies", "parameters": {}}'
-    # Split the string to isolate the JSON part
-    split_string = response_message.content.split("\n\n")  # Split by the double newline
+    print("response " + response_message.content)
+    function_name = ""
+    try:
+        if response_message.content.__contains__("\n\n"):
+            print("Response contains double newline.")
+            # Split the string to isolate the JSON part
+            split_string = response_message.content.split("\n\n")  # Split by the double newline
 
-    # The JSON part is usually the second part after the split
-    json_part = split_string[1]
+            # The JSON part is usually the second part after the split
+            
+            json_part = split_string[1]
+            parsed_json = json.loads(json_part)
 
-    # Parse the extracted JSON string
-    parsed_json = json.loads(json_part)
+            # Print the extracted and parsed JSON
+            print(f"parsed json ")
+            print (parsed_json)
+            function_name = parsed_json["function"]
+        else:
+            print("Response does not contain double newline.")
+              # Split the string to isolate the JSON part
+            split_string = response_message.content.split("\n\n")  # Split by the double newline
 
-    # Print the extracted and parsed JSON
-    print(parsed_json)
+        
+            # The JSON part is usually the first part after the split
+            
+            json_part = split_string[0]
+            parsed_json = json.loads(json_part)
 
-
-    #print("Function" + function_call)
-    #print(json.dumps(parsed_json, indent=4))
-
-    #function_call = json.loads(parsed_json)
-   
-    if parsed_json["function"] == "get_now_playing_movies":
+            # Print the extracted and parsed JSON
+            print(f"parsed json ")
+            print (parsed_json)
+            function_name = parsed_json["function"]
+    except Exception as e:
+            print(f"Error calling get_showtimes: {e}")
+    
+    if function_name == "get_now_playing_movies":
         print("Function is get_now_playing_movies.")
 
         # Check if the response contains get_now_playing_movies
@@ -90,8 +105,42 @@ async def on_message(message: cl.Message):
         #Append the function result to the message history
         message_history.append({"role" : "function", "name" : "get_now_playing_movies",  "content": current_movies})
         response_message = await generate_response(client, message_history, gen_kwargs)
+    elif function_name == "get_showtimes":
+        print("Function is get_showtimes.")
+        try:
+            parameters = parsed_json["parameters"]
+            print(f"parameters: {parameters}")
+            title = parameters["title"]
+            location = parameters["location"]
+           
+            show_times = get_showtimes(title, location)
+            #Append the function result to the message history
+            message_history.append({"role" : "function", "name" : "get_showtimes",  "content": show_times})
+            response_message = await generate_response(client, message_history, gen_kwargs)
 
+        except Exception as e:
+            print(f"Error calling get_showtimes: {e}")
+    elif function_name == "buy_ticket":
+        print("Function is buy_ticket.")
+        try:
+            parameters = parsed_json["parameters"]
+            print(f"parameters: {parameters}")
+            theater = parameters["theater"]
+            movie = parameters["movie"]
+            showtime = parameters["showtime"]
+          
+            #if theater, movie, showtime is not empty  
+            if theater and movie and showtime:
+                buy_ticket_result = buy_ticket(theater, movie, showtime)
+                #Append the function result to the message history
+                message_history.append({"role": "function", "name" : "buy_ticket", "content": buy_ticket_result})
+                response_message = await generate_response(client, message_history, gen_kwargs)
+            else:
+                    print("Missing theater, movie or showtime for buy_ticket")
 
+        except Exception as e:
+            print(f"Error calling get_showtimes: {e}")
+    
     message_history.append({"role": "assistant", "content": response_message.content})
     cl.user_session.set("message_history", message_history)
 

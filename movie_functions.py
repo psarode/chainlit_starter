@@ -38,6 +38,7 @@ def get_now_playing_movies():
     
 
 def get_showtimes(title, location):
+    print("calling get showtimes - priya")
     params = {
         "api_key": os.getenv('SERP_API_KEY'),
         "engine": "google",
@@ -50,7 +51,7 @@ def get_showtimes(title, location):
 
     search = GoogleSearch(params)
     results = search.get_dict()
-
+    print (results)
     if 'showtimes' not in results:
         return f"No showtimes found for {title} in {location}."
 
